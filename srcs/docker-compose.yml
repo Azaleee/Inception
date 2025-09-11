@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  mariadb:
+    build: ./services/mariadb
+    container_name: mariadb
+    env_file:
+      - .env
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:
+    driver: local
