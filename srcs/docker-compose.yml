@@ -1,14 +1,68 @@
-version: '3.8'
-
 services:
   mariadb:
-    build: ./services/mariadb
     container_name: mariadb
-    env_file:
-      - .env
+    hostname: mariadb
+    build:
+      context: ./requirements/mariadb
+    env_file: .env
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - mariadb_volume:/var/lib/mysql
+    restart: always
+    networks: [inception_network]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h mariadb -u${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 2s
+      timeout: 10s
+      retries: 5
+
+  wordpress:
+    container_name: wordpress
+    hostname: wordpress
+    build:
+      context: ./requirements/wordpress
+    env_file: .env
+    volumes:
+      - wordpress_volume:/var/www/html
+    depends_on:
+       mariadb:
+         condition: service_healthy
+    expose:
+      - "9000"
+    restart: always
+    networks: [inception_network]
+
+  nginx:
+    container_name: nginx
+    hostname: nginx
+    build:
+      context: ./requirements/nginx
+    env_file: .env
+    volumes:
+      - wordpress_volume:/var/www/html
+    depends_on:
+      - wordpress
+    ports:
+      - "443:443"
+    restart: always
+    networks: [inception_network]
 
 volumes:
-  mariadb_data:
+  mariadb_volume:
     driver: local
+    driver_opts:
+      type: none
+      device: /home/mosmont/data/mysql
+      o: bind
+
+  wordpress_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/mosmont/data/wordpress
+      o: bind
+
+networks:
+  inception_network:
+    name: inception_network
+    driver: bridge
+
